@@ -1,13 +1,13 @@
 import type { DocumentMemento } from '../../domain/DocumentMemento.js';
 import type { SvgDocument } from '../../domain/SvgDocument.js';
-import type { EditorSession } from '../EditorSession.js';
+import type { DocumentAccess } from '../contracts/DocumentAccess.js';
 import { CommandResult } from '../contracts/CommandResult.js';
 
 export class EditTransaction {
   #before: DocumentMemento | undefined;
   #after: DocumentMemento | undefined;
   #summary = '';
-  constructor(private readonly session: EditorSession) {}
+  constructor(private readonly session: DocumentAccess) {}
   apply(operation: (document: SvgDocument) => CommandResult): CommandResult {
     const document = this.session.requireDocument(); const before = document.capture();
     try {

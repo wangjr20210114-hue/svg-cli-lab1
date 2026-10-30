@@ -1,7 +1,8 @@
 import { DomainError } from '../domain/DomainError.js';
 import type { SvgDocument } from '../domain/SvgDocument.js';
+import type { DocumentAccess } from './contracts/DocumentAccess.js';
 
-export class EditorSession {
+export class EditorSession implements DocumentAccess {
   #document: SvgDocument | undefined;
   #path: string | undefined;
   get path(): string | undefined { return this.#path; }

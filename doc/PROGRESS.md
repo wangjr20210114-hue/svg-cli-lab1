@@ -23,3 +23,4 @@
 - 用户要求发布公共仓库并逐功能提交。发布平台由 Gitee 改为 GitHub，使用已登录账号 wangjr20210114-hue。
 - 采用完整文档 Memento 简化复杂树编辑的撤销，保留 Command 和 Composite 的真实行为职责。
 - F09 验证时，沙箱中的 Windows 文件替换测试报 EPERM。保留原始 cause 后定位到 rename；同一测试在普通执行环境 4/4 通过。保留临时文件加替换的实现，未改为先删除旧文件；涉及文件替换的后续验收在正常环境执行。
+- F11 后依赖审查发现 EditTransaction 引用具体 EditorSession，与历史模块边界不一致。增加 DocumentAccess 最小接口，事务依赖接口、会话实现接口；通过类型检查后独立 fix 提交。
