@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {resolve} from 'node:path';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
 import {TemporaryDirectory} from '../support/TemporaryDirectory.js';
 import {SvgReader} from '../../src/infrastructure/svg/SvgReader.js';
 import {BuiltinShapes} from '../../src/bootstrap/BuiltinShapes.js';
@@ -31,4 +31,25 @@ test('malformed quoted commands leave history intact and reading external SVG as
   assert.equal(result.status,0,result.stderr); assert.match(result.stdout,/unterminated double quote/);
   assert.match(result.stdout,/  x=1\n/); assert.match(result.stdout,/warning: assigned id rect1 to unnamed <rect>/);
   assert.match(result.stdout,/error: undo not allowed after io command/); assert.match(result.stdout,/svg \(400x300\)/);
+});
+test('full assignment transcript has only its two intentional errors and saves the expected document',()=>{
+  const dir=new TemporaryDirectory();
+  try{
+    const script=readFileSync('examples/basic.txt','utf8').replace('save demo.svg',`save "${dir.file('demo.svg')}"`);
+    const result=spawnSync(process.execPath,[resolve('dist/src/main.js')],{input:script,encoding:'utf8',windowsHide:true});
+    assert.equal(result.status,0,result.stderr); assert.equal((result.stdout.match(/error: /g)??[]).length,2,result.stdout);
+    const doc=new SvgReader(BuiltinShapes.createFactory()).read(readFileSync(dir.file('demo.svg'),'utf8')).document;
+    assert.equal(doc.size,5); assert.equal(doc.get('c1').attributes().cx,'130');
+    assert.equal(doc.get('title').textContent(),'My Diagram'); assert.equal(doc.parent('box')!.id,'markers');
+  }finally{dir.cleanup();}
+});
+test('invalid imported SVG does not emit partial warnings replace the document or discard redo',()=>{
+  const dir=new TemporaryDirectory();
+  try{
+    writeFileSync(dir.file('invalid.svg'),'<svg><rect/><path/></svg>');
+    const script=['init','create rect r 0 0 1 1','move r 1 0','undo',`read "${dir.file('invalid.svg')}"`,'redo','show r',''].join('\n');
+    const result=spawnSync(process.execPath,[resolve('dist/src/main.js')],{input:script,encoding:'utf8',windowsHide:true});
+    assert.equal(result.status,0,result.stderr); assert.ok(!result.stdout.includes('warning:'),result.stdout);
+    assert.match(result.stdout,/unknown shape type: path/); assert.match(result.stdout,/  x=1\n/);
+  }finally{dir.cleanup();}
 });

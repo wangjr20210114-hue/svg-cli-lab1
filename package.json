@@ -12,7 +12,11 @@
     "test": "npm run build --silent && node --test dist/tests/**/*.test.js",
     "test:unit": "npm run build --silent && node --test dist/tests/unit/*.test.js",
     "test:integration": "npm run build --silent && node --test dist/tests/integration/*.test.js",
-    "test:e2e": "npm run build --silent && node --test dist/tests/e2e/*.test.js"
+    "test:e2e": "npm run build --silent && node --test dist/tests/e2e/*.test.js",
+    "check:deps": "npm run build --silent && node dist/scripts/ArchitectureCheck.js",
+    "verify": "npm run build --silent && node dist/scripts/ArchitectureCheck.js && node --test dist/tests/**/*.test.js",
+    "demo": "npm run build --silent && node dist/scripts/ReplayExample.js examples/flowchart.txt",
+    "demo:basic": "npm run build --silent && node dist/scripts/ReplayExample.js examples/basic.txt"
   },
   "dependencies": { "@xmldom/xmldom": "^0.8.11" },
   "devDependencies": { "@types/node": "^24.0.0", "typescript": "^5.9.3" }
