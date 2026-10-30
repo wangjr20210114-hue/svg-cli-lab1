@@ -1,1 +1,2 @@
-console.log("svg-editor 0.1 — type 'help' for commands");
+import { ApplicationBootstrap } from './bootstrap/ApplicationBootstrap.js';
+await ApplicationBootstrap.create().run();
