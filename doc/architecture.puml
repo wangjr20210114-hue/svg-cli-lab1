@@ -1,0 +1,36 @@
+@startuml
+!pragma layout smetana
+title SVG CLI - Module dependencies
+top to bottom direction
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+component "M8 Bootstrap" as Boot
+component "M1 CLI / IO adapters" as CLI
+component "M2 Parsing / Command registry" as Parser
+package "Application layer" {
+  component "M4 Commands / Session" as App
+  component "M5 History / EditTransaction" as Hist
+  interface "Contracts and ports" as Ports
+}
+component "M3 Domain / Composite tree" as Domain
+component "M6 SVG / File adapter" as Infra
+component "M7 Presenters / Visitors" as View
+note left of Boot
+  Wires all modules.
+  Repeated construction arrows omitted.
+end note
+Boot --> CLI
+CLI --> Parser
+CLI --> App
+CLI --> View
+Parser --> App
+App --> Ports
+App --> Hist
+App --> Domain
+Hist --> Ports
+Hist --> Domain
+Infra ..|> Ports : implements DocumentStore
+Infra --> Domain
+View --> Ports
+View --> Domain
+@enduml
