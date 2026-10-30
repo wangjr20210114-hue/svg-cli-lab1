@@ -3,6 +3,7 @@ import { DocumentMemento } from './DocumentMemento.js';
 import { NumberValue } from './NumberValue.js';
 import type { Shape } from './Shape.js';
 import type { ShapeContainer } from './ShapeContainer.js';
+import { Group } from './shapes/Group.js';
 
 export class SvgDocument implements ShapeContainer {
   #width: number;
@@ -54,6 +55,64 @@ export class SvgDocument implements ShapeContainer {
     const shape = this.get(id); const parent = this.parentContainer(shape);
     parent.replaceChildren(parent.children().filter(child => child !== shape)); this.reindex();
   }
+  group(id: string, memberIds: readonly string[]): Group {
+    if (this.has(id)) throw new DomainError(`id already exists: ${id}`);
+    if (memberIds.length < 2) throw new DomainError('group requires at least two shapes');
+    if (new Set(memberIds).size !== memberIds.length) throw new DomainError('duplicate group member');
+    const selected = memberIds.map(member => this.get(member));
+    for (const ancestor of selected) for (const child of selected) {
+      if (ancestor !== child && this.isAncestor(ancestor, child)) {
+        throw new DomainError(`cannot group a container into its own descendant: ${ancestor.id}`);
+      }
+    }
+    const members = new Set(memberIds);
+    const ordered = this.all().filter(shape => members.has(shape.id));
+    const chains = selected.map(shape => this.ancestors(shape));
+    const common = chains[0]!.find(candidate => chains.every(chain => chain.includes(candidate)));
+    const parent: ShapeContainer = common ? this.asContainer(common) : this;
+    const original = parent.children();
+    const branches = ordered.map(shape => {
+      let branch = shape;
+      while (this.parent(branch.id) !== common) branch = this.parent(branch.id)!;
+      return branch;
+    });
+    const anchor = Math.min(...branches.map(branch => original.indexOf(branch)));
+    const group = new Group(id, ordered);
+    for (const shape of ordered) {
+      const oldParent = this.parentContainer(shape);
+      oldParent.replaceChildren(oldParent.children().filter(child => child !== shape));
+    }
+    const remaining = [...parent.children()];
+    const position = original.slice(0, anchor).filter(child => remaining.includes(child)).length;
+    remaining.splice(position, 0, group); parent.replaceChildren(remaining); this.reindex(); return group;
+  }
+  ungroup(id: string): void {
+    const shape = this.get(id); const container = this.asContainer(shape);
+    const parent = this.parent(id);
+    if (!parent) throw new DomainError(`cannot ungroup top-level container: ${id}`);
+    const siblings = [...this.asContainer(parent).children()];
+    siblings.splice(siblings.indexOf(shape), 1, ...container.children());
+    this.asContainer(parent).replaceChildren(siblings); this.reindex();
+  }
+  addTo(containerId: string, id: string): void {
+    const target = this.get(containerId); const container = this.asContainer(target); const shape = this.get(id);
+    if (target === shape || this.isAncestor(shape, target)) throw new DomainError(`cannot move a container into its own descendant: ${id}`);
+    const oldParent = this.parentContainer(shape);
+    oldParent.replaceChildren(oldParent.children().filter(child => child !== shape));
+    container.replaceChildren([...container.children(), shape]); this.reindex();
+  }
+  reorder(id: string, front: boolean): void {
+    const shape = this.get(id); const container = this.parentContainer(shape);
+    const siblings = container.children().filter(child => child !== shape);
+    container.replaceChildren(front ? [...siblings, shape] : [shape, ...siblings]); this.reindex();
+  }
+  private ancestors(shape: Shape): (Shape | undefined)[] {
+    const ancestors: (Shape | undefined)[] = [];
+    let parent = this.parent(shape.id);
+    while (parent) { ancestors.push(parent); parent = this.parent(parent.id); }
+    ancestors.push(undefined); return ancestors;
+  }
+  private isAncestor(ancestor: Shape, child: Shape): boolean { return this.ancestors(child).includes(ancestor); }
   capture(): DocumentMemento { return new DocumentMemento(this.#width, this.#height, this.#roots); }
   restore(memento: DocumentMemento): void { memento.restoreInto(this); }
   /** @internal Used by DocumentMemento after cloning all nodes. */
